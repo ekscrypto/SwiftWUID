@@ -39,7 +39,7 @@ All values measured on M2 Max, from Unit Test target with debugging on
 When generating identifiers from non-coordinated systems, each system can either have a fixed H28 (27 bits usable,
 24 bits if using Section) or a randomly generated H28.
 
-The H28 value must be greater than 0 &ltl;&lt; 36 and lower than or equal to 0x7FFFFFF &lt;&lt; 36.
+The H28 value must be greater than or equal to 1 &lt;&lt; 36 and lower than or equal to 0x7FFFFFF &lt;&lt; 36.
 
 Note that eventually after generating around 80% of the (2^36/step) identifiers, the algorithm will enter into a H28
 renewal mode expecting a different H28 value to be returned.  If unable to return a value immediately, you may throw
