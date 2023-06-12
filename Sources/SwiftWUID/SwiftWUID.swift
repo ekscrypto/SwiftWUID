@@ -23,7 +23,7 @@ public struct WUID {
     
     internal var n: Int64
     private var step: Int64
-    private var floor: Int64
+    private var scaledReservedDecimalDigits: Int64
     
     public enum Step: Int64 {
         case by1    = 1
@@ -39,19 +39,32 @@ public struct WUID {
         case by1024 = 1024
     }
     
-    public struct Flags: OptionSet {
-        public let rawValue: UInt8
+    private struct Flags: OptionSet {
+        let rawValue: UInt8
         
-        public init(rawValue: UInt8) {
-            self.rawValue = rawValue
-        }
-        
-        public static let obfuscated = Flags(rawValue: 1 << 0)
-        public static let monolithic = Flags(rawValue: 1 << 1)
-        public static let withSection = Flags(rawValue: 1 << 2)
+        static let withObfuscation = Flags(rawValue: 1 << 0)
+        static let withReservedDecimalDigits = Flags(rawValue: 1 << 1)
+        static let withSection = Flags(rawValue: 1 << 2)
     }
     
-    public private(set) var flags: Flags
+    public enum Obfuscation {
+        case none
+        case v1(seed: UInt64)
+    }
+    
+    public enum ReservedDecimalDigits: Int64 {
+        case none = 0
+        case one = 1
+        case two = 2
+        case three = 3
+    }
+    
+    public enum Section {
+        case none
+        case value(UInt8)
+    }
+    
+    private var flags: Flags
     private var obfuscationMask: Int64
     private let name: String
     private var numRenewed: Int64 = 0
@@ -67,8 +80,31 @@ public struct WUID {
         guard existingH28 != h28 else {
             throw Errors.h28ShouldBeDifferent
         }
-        n = (n & Self.sectionMask) | h28 | step
+        
+        if flags.contains(.withSection) {
+            n = (n & Self.sectionMask) | h28 & Self.l60Mask | step
+        } else {
+            n = h28 | step
+        }
+        
         numRenewed += 1
+    }
+    
+    private static func pow<T: BinaryInteger>(_ base: T, _ power: T) -> T {
+        func expBySq(_ y: T, _ x: T, _ n: T) -> T {
+            precondition(n >= 0)
+            if n == 0 {
+                return y
+            } else if n == 1 {
+                return y * x
+            } else if n.isMultiple(of: 2) {
+                return expBySq(y, x * x, n / 2)
+            } else { // n is odd
+                return expBySq(y * x, x * x, (n - 1) / 2)
+            }
+        }
+
+        return expBySq(1, base, power)
     }
     
     public enum Errors: Error {
@@ -78,57 +114,78 @@ public struct WUID {
         case h28ShouldBeDifferent
         case cannotResetToNegativeValue
         case valueIsAbovePanicValue
+        case cannotReserveDecimalDigitsWhenUsingSection
     }
     
     /// Creates a new WUID generator
     ///
-    /// When the next ID is computed, it is an increment of (step / floor * floor)
+    /// The `reservedDecimalDigits` is used to zero-out the lowest decimal digits of an identifier's decimal
+    /// representation by the specified number of decimal digits.  The main purpose of this is to allow the caller to
+    /// set the lowest decimal digits to a custom value that may represent a specific type so when looking at an
+    /// identifier's decimal representation you can quickly identify the type of object represented by this identifier.
+    ///
+    /// For example, using a step of .by1024 and h28 of 1, the first ID generated would have a value of
+    /// 68719477760, by setting `reservedDecimalDigits` to .three, the generated identifier would be 68719477000.
+    /// Assuming you want to track a custom object class and assign it a 3 digit value of 169, once the ID is
+    /// produced by next() you can then add 169 to the final result obtaining a final value of 68719477169.
     ///
     /// - Parameters:
     ///   - step: increment for ID computations
-    ///   - floor: increment base, used to inject +/- 1 variations of the final ID produced
+    ///   - reservedDecimalDigits: how many lowest digits to zero out in the final ID decimal representation
     ///   - flags: options to enable (monolithic, obfuscation)
     ///   - section: Value for bits 61-63 of the final ID (before obfuscation)
     ///   - name: reference name to assign to this generator
     ///   - h28: function to produce bits 37-63
     public init(
         step providedStep: Step = .by1,
-        floor providedFloor: Int64 = 0,
-        flags providedFlags: Flags = [],
-        section providedSection: Int64 = 0,
+        reservedDecimalDigits providedReservedDecimalDigits: ReservedDecimalDigits = .none,
+        obfuscation: Obfuscation = .none,
+        section providedSection: Section = .none,
         name providedName: String,
         h28: @escaping () throws -> Int64
     ) throws {
         name = providedName
         step = providedStep.rawValue
-        flags = providedFlags
+        flags = []
         loadH28 = h28
 
-        if !providedFlags.contains(.monolithic), providedSection != 0 {
-            guard providedSection >= 0, providedSection <= 7 else {
+        if case .value(let sectionValue) = providedSection {
+            guard providedReservedDecimalDigits == .none else {
+                throw Errors.cannotReserveDecimalDigitsWhenUsingSection
+            }
+            guard sectionValue <= 7 else {
                 throw Errors.sectionMustBePostiveAndLowerOrEqualToSeven
             }
-            n = providedSection << 60
+            n = Int64(sectionValue) << 60
+            flags = flags.union(.withSection)
         } else {
             n = 0
         }
         
-        if flags.contains(.obfuscated), providedFloor == 0 {
-            let ones = step - 1
-            obfuscationMask = ones
-        } else {
+        switch obfuscation {
+        case .none:
             obfuscationMask = 0
+        case .v1(let seed):
+            flags = flags.union(.withObfuscation)
+            var x = seed
+            x = (x ^ (x >> 30)) * UInt64(0xbf58476d1ce4e5b9)
+            x = (x ^ (x >> 27)) * UInt64(0x94d049bb133111eb)
+            x = (x ^ (x >> 31)) & UInt64(0x7FFFFFFFFFFFFFFF)
+            if providedReservedDecimalDigits == .none {
+                let ones = UInt64(step - 1)
+                x |= ones
+            }
+            obfuscationMask = Int64(x)
         }
         
-        if providedFloor != 0, (providedFloor < 0 || providedFloor >= step) {
-            throw Errors.floorMustBePostiveAndLowerThanStep
-        }
-        
-        floor = providedFloor
-        if providedFloor >= 2 {
-            flags = flags.union(.monolithic)
+        if providedReservedDecimalDigits != .none {
+            scaledReservedDecimalDigits = Self.pow(10, providedReservedDecimalDigits.rawValue)
+            guard scaledReservedDecimalDigits < step else {
+                throw Errors.floorMustBePostiveAndLowerThanStep
+            }
+            flags = flags.union(.withReservedDecimalDigits)
         } else {
-            flags = flags.subtracting(.monolithic)
+            scaledReservedDecimalDigits = 1
         }
         
         try renew()
@@ -161,15 +218,15 @@ public struct WUID {
         switch flags {
         case []:
             return v1
-        case .obfuscated:
+        case .withObfuscation:
             let x = v1 ^ obfuscationMask
             return (v1 & Self.h28Mask) | (x & Self.l36Mask)
-        case .monolithic:
-            return v1 / floor * floor
-        case [.monolithic, .obfuscated]:
+        case .withReservedDecimalDigits:
+            return v1 / scaledReservedDecimalDigits * scaledReservedDecimalDigits
+        case [.withReservedDecimalDigits, .withObfuscation]:
             let x = v1 ^ obfuscationMask
             let q = (v1 & Self.h28Mask) | (x & Self.l36Mask)
-            return q / floor * floor
+            return q / scaledReservedDecimalDigits * scaledReservedDecimalDigits
         default:
             fatalError("Implementation incomplete")
         }
@@ -189,11 +246,11 @@ public struct WUID {
             fatalError("n is too old")
         }
 
-        if flags.contains(.monolithic) {
+        if flags.contains(.withReservedDecimalDigits) {
             updatedN |= n & Self.sectionMask
         }
         
-        if floor > 1 {
+        if scaledReservedDecimalDigits > 1 {
             if updatedN & (step - 1) != 0 {
                 updatedN = updatedN & ~(step - 1) + step
             }

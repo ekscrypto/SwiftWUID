@@ -31,71 +31,79 @@ final class SwiftWUIDTests: XCTestCase {
         XCTAssertEqual(w.next(), (1 << 36) + 4, "Second ID should be 4")
     }
     
-    func testStep_by4_IdShouldIncreaseBy2() throws {
+    func testStep_by4_IdShouldIncreaseBy4() throws {
         var w = try WUID(step: .by4, name: "by 2", h28: { 1 << 36 })
         XCTAssertEqual(w.next(), (1 << 36) + 4, "First ID should be 4")
         XCTAssertEqual(w.next(), (1 << 36) + 8, "Second ID should be 8")
     }
     
-    func testStep_by8_IdShouldIncreaseBy2() throws {
+    func testStep_by8_IdShouldIncreaseBy8() throws {
         var w = try WUID(step: .by8, name: "by 2", h28: { 1 << 36 })
         XCTAssertEqual(w.next(), (1 << 36) + 8, "First ID should be 8")
         XCTAssertEqual(w.next(), (1 << 36) + 16, "Second ID should be 16")
     }
     
-    func testStep_by16_IdShouldIncreaseBy2() throws {
+    func testStep_by16_IdShouldIncreaseBy16() throws {
         var w = try WUID(step: .by16, name: "by 2", h28: { 1 << 36 })
         XCTAssertEqual(w.next(), (1 << 36) + 16, "First ID should be 16")
         XCTAssertEqual(w.next(), (1 << 36) + 32, "Second ID should be 32")
     }
     
-    func testStep_by32_IdShouldIncreaseBy2() throws {
+    func testStep_by32_IdShouldIncreaseBy32() throws {
         var w = try WUID(step: .by32, name: "by 2", h28: { 1 << 36 })
         XCTAssertEqual(w.next(), (1 << 36) + 32, "First ID should be 32")
         XCTAssertEqual(w.next(), (1 << 36) + 64, "Second ID should be 64")
     }
     
-    func testStep_by64_IdShouldIncreaseBy2() throws {
+    func testStep_by64_IdShouldIncreaseBy64() throws {
         var w = try WUID(step: .by64, name: "by 2", h28: { 1 << 36 })
         XCTAssertEqual(w.next(), (1 << 36) + 64, "First ID should be 64")
         XCTAssertEqual(w.next(), (1 << 36) + 128, "Second ID should be 128")
     }
     
-    func testStep_by128_IdShouldIncreaseBy2() throws {
+    func testStep_by128_IdShouldIncreaseBy128() throws {
         var w = try WUID(step: .by128, name: "by 2", h28: { 1 << 36 })
         XCTAssertEqual(w.next(), (1 << 36) + 128, "First ID should be 128")
         XCTAssertEqual(w.next(), (1 << 36) + 256, "Second ID should be 256")
     }
     
-    func testStep_by256_IdShouldIncreaseBy2() throws {
+    func testStep_by256_IdShouldIncreaseBy256() throws {
         var w = try WUID(step: .by256, name: "by 2", h28: { 1 << 36 })
         XCTAssertEqual(w.next(), (1 << 36) + 256, "First ID should be 256")
         XCTAssertEqual(w.next(), (1 << 36) + 512, "Second ID should be 512")
     }
     
-    func testStep_by512_IdShouldIncreaseBy2() throws {
+    func testStep_by512_IdShouldIncreaseBy512() throws {
         var w = try WUID(step: .by512, name: "by 2", h28: { 1 << 36 })
         XCTAssertEqual(w.next(), (1 << 36) + 512, "First ID should be 512")
         XCTAssertEqual(w.next(), (1 << 36) + 1024, "Second ID should be 1024")
     }
     
-    func testStep_by1024_IdShouldIncreaseBy2() throws {
+    func testStep_by1024_IdShouldIncreaseBy1024() throws {
         var w = try WUID(step: .by1024, name: "by 2", h28: { 1 << 36 })
         XCTAssertEqual(w.next(), (1 << 36) + 1024, "First ID should be 1024")
         XCTAssertEqual(w.next(), (1 << 36) + 2048, "Second ID should be 2048")
     }
     
     func testFloor_by2_IdShouldStartAtFloorAndIncreaseBy2() throws {
-        var w = try WUID(step: .by2, floor: 1, name: "by 2 with floor", h28: { 1 << 36 })
-        XCTAssertEqual(w.next(), (1 << 36) + 2, "When floor is 1 value is simply incremented")
-        XCTAssertEqual(w.next(), (1 << 36) + 4, "When floor is 1 value is simply incremented")
+        var w = try WUID(
+            step: .by16,
+            reservedDecimalDigits: .one,
+            name: "by 2 with reserved digits",
+            h28: { 1 << 36 })
+        XCTAssertEqual(w.next(), 68719476750, "When floor is 1 value is simply incremented")
+        XCTAssertEqual(w.next(), 68719476760, "When floor is 1 value is simply incremented")
     }
     
     func testFloor_by1024_IdShouldStartAtFloorAndIncreaseBy1024() throws {
-        var w = try WUID(step: .by1024, floor: 897, name: "by 1024 with floor", h28: { 1 << 36 })
-        XCTAssertEqual(w.next(), 0x00000010000003a7) // values produced by original WUID implementation in Go
-        XCTAssertEqual(w.next(), 0x0000001000000728)
-        XCTAssertEqual(w.next(), 0x0000001000000aa9)
+        var w = try WUID(
+            step: .by1024,
+            reservedDecimalDigits: .three,
+            name: "by 1024 with reserved digits",
+            h28: { 1 << 36 })
+        XCTAssertEqual(w.next(), 68719477000) // values produced by original WUID implementation in Go
+        XCTAssertEqual(w.next(), 68719478000)
+        XCTAssertEqual(w.next(), 68719479000)
     }
 
     func testWUID_next() throws {
