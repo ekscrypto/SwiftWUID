@@ -85,25 +85,25 @@ final class SwiftWUIDTests: XCTestCase {
         XCTAssertEqual(w.next(), (1 << 36) + 2048, "Second ID should be 2048")
     }
     
-    func testFloor_by2_IdShouldStartAtFloorAndIncreaseBy2() throws {
+    func testReservedDecimalDigits_by16WithOneReservedDigit_IdShouldIncreaseBy10() throws {
         var w = try WUID(
             step: .by16,
             reservedDecimalDigits: .one,
             name: "by 2 with reserved digits",
             h28: { 1 << 36 })
-        XCTAssertEqual(w.next(), 68719476750, "When floor is 1 value is simply incremented")
-        XCTAssertEqual(w.next(), 68719476760, "When floor is 1 value is simply incremented")
+        XCTAssertEqual(w.next(), 68719476750, "With one reserved digit last decimal digit should be 0")
+        XCTAssertEqual(w.next(), 68719476760, "With one reserved digit last decimal digit should be 0")
     }
     
-    func testFloor_by1024_IdShouldStartAtFloorAndIncreaseBy1024() throws {
+    func testReservedDecimalDigits_by1024WithThreeReservedDigits_IdShouldIncreaseBy1000() throws {
         var w = try WUID(
             step: .by1024,
             reservedDecimalDigits: .three,
             name: "by 1024 with reserved digits",
             h28: { 1 << 36 })
-        XCTAssertEqual(w.next(), 68719477000) // values produced by original WUID implementation in Go
-        XCTAssertEqual(w.next(), 68719478000)
-        XCTAssertEqual(w.next(), 68719479000)
+        XCTAssertEqual(w.next(), 68719477000, "With three reserved digits last 3 decimal digits should be 000")
+        XCTAssertEqual(w.next(), 68719478000, "With three reserved digits last 3 decimal digits should be 000")
+        XCTAssertEqual(w.next(), 68719479000, "With three reserved digits last 3 decimal digits should be 000")
     }
 
     func testWUID_next() throws {
@@ -159,343 +159,34 @@ final class SwiftWUIDTests: XCTestCase {
         XCTAssertEqual(w.next(), (2 << 36) + 1, "H28 renewal should be re-attempted after renewInterval/step IDs are generated")
         WUID.renewInterval = originalRenewInterval
     }
-        
+    
+    func testSection_highestBitsShouldMatchSection() throws {
+        for i in 0...7 {
+            var w = try WUID(section: .value(UInt8(i)), name: "With section", h28: { 1 << 36 })
+            XCTAssertEqual(w.next(), ( Int64(i) << 60 | 1 << 36 | 1 ), "Section bits should be in bit positions 61-63")
+            XCTAssertEqual(w.next(), ( Int64(i) << 60 | 1 << 36 | 2 ), "Section bits should be in bit positions 61-63")
+        }
+    }
+    
+    func testSectionAndReservedDigits_shouldThrow() throws {
+        XCTAssertThrowsError(try WUID(
+            step: .by1024,
+            reservedDecimalDigits: .two,
+            section: .value(5),
+            name: "Invalid configuration",
+            h28: { 1 << 36 }))
+    }
+
+    func testSection_valueOutOfRange_shouldThrow() throws {
+        XCTAssertThrowsError(try WUID(
+            step: .by1024,
+            section: .value(22),
+            name: "Invalid configuration",
+            h28: { 1 << 36 }))
+    }
 }
 
-//
-//func TestWUID_Next_Panic(t *testing.T) {
-//    const total = 100
-//    w := NewWUID("alpha", nil)
-//    atomic.StoreInt64(&w.N, PanicValue)
-//
-//    ch := make(chan int64, total)
-//    for i := 0; i < total; i++ {
-//        go func() {
-//            defer func() {
-//                if r := recover(); r != nil {
-//                    ch <- 0
-//                }
-//            }()
-//
-//            ch <- w.Next()
-//        }()
-//    }
-//
-//    for i := 0; i < total; i++ {
-//        v := <-ch
-//        if v != 0 {
-//            t.Fatal("something is wrong with Next()")
-//        }
-//    }
-//}
-//
-//func waitUntilNumRenewAttemptsReaches(t *testing.T, w *WUID, expected int64) {
-//    t.Helper()
-//    startTime := time.Now()
-//    for time.Since(startTime) < time.Second {
-//        if atomic.LoadInt64(&w.Stats.NumRenewAttempts) == expected {
-//            return
-//        }
-//        time.Sleep(time.Millisecond * 10)
-//    }
-//    t.Fatal("timeout")
-//}
-//
-//func waitUntilNumRenewedReaches(t *testing.T, w *WUID, expected int64) {
-//    t.Helper()
-//    startTime := time.Now()
-//    for time.Since(startTime) < time.Second {
-//        if atomic.LoadInt64(&w.Stats.NumRenewed) == expected {
-//            return
-//        }
-//        time.Sleep(time.Millisecond * 10)
-//    }
-//    t.Fatal("timeout")
-//}
-//
-//func TestWUID_Renew(t *testing.T) {
-//    w := NewWUID("alpha", slog.NewScavenger())
-//    w.Renew = func() error {
-//        w.Reset(((atomic.LoadInt64(&w.N) >> 36) + 1) << 36)
-//        return nil
-//    }
-//
-//    w.Reset(Bye)
-//    n1a := w.Next()
-//    if n1a>>36 != 0 {
-//        t.Fatal(`n1a>>36 != 0`)
-//    }
-//
-//    waitUntilNumRenewedReaches(t, w, 1)
-//    n1b := w.Next()
-//    if n1b != 1<<36+1 {
-//        t.Fatal(`n1b != 1<<36+1`)
-//    }
-//
-//    w.Reset(1<<36 | Bye)
-//    n2a := w.Next()
-//    if n2a>>36 != 1 {
-//        t.Fatal(`n2a>>36 != 1`)
-//    }
-//
-//    waitUntilNumRenewedReaches(t, w, 2)
-//    n2b := w.Next()
-//    if n2b != 2<<36+1 {
-//        t.Fatal(`n2b != 2<<36+1`)
-//    }
-//
-//    w.Reset(2<<36 | Bye + RenewIntervalMask + 1)
-//    n3a := w.Next()
-//    if n3a>>36 != 2 {
-//        t.Fatal(`n3a>>36 != 2`)
-//    }
-//
-//    waitUntilNumRenewedReaches(t, w, 3)
-//    n3b := w.Next()
-//    if n3b != 3<<36+1 {
-//        t.Fatal(`n3b != 3<<36+1`)
-//    }
-//
-//    w.Reset(Bye + 1)
-//    for i := 0; i < 100; i++ {
-//        w.Next()
-//    }
-//    if atomic.LoadInt64(&w.Stats.NumRenewAttempts) != 3 {
-//        t.Fatal(`atomic.LoadInt64(&w.Stats.NumRenewAttempts) != 3`)
-//    }
-//
-//    var num int
-//    w.Scavenger().Filter(func(level, msg string) bool {
-//        if level == slog.LevelInfo && strings.Contains(msg, "renew succeeded") {
-//            num++
-//        }
-//        return true
-//    })
-//    if num != 3 {
-//        t.Fatal(`num != 3`)
-//    }
-//}
-//
-//func TestWUID_Renew_Error(t *testing.T) {
-//    w := NewWUID("alpha", slog.NewScavenger())
-//    w.Renew = func() error {
-//        return errors.New("foo")
-//    }
-//
-//    w.Reset((1 >> 36 << 36) | Bye)
-//    w.Next()
-//    waitUntilNumRenewAttemptsReaches(t, w, 1)
-//    w.Next()
-//
-//    w.Reset((2 >> 36 << 36) | Bye)
-//    w.Next()
-//    waitUntilNumRenewAttemptsReaches(t, w, 2)
-//
-//    for i := 0; i < 100; i++ {
-//        w.Next()
-//    }
-//    if atomic.LoadInt64(&w.Stats.NumRenewAttempts) != 2 {
-//        t.Fatal(`atomic.LoadInt64(&w.Stats.NumRenewAttempts) != 2`)
-//    }
-//    if atomic.LoadInt64(&w.Stats.NumRenewed) != 0 {
-//        t.Fatal(`atomic.LoadInt64(&w.Stats.NumRenewed) != 0`)
-//    }
-//
-//    var num int
-//    w.Scavenger().Filter(func(level, msg string) bool {
-//        if level == slog.LevelWarn && strings.Contains(msg, "renew failed") && strings.Contains(msg, "foo") {
-//            num++
-//        }
-//        return true
-//    })
-//    if num != 2 {
-//        t.Fatal(`num != 2`)
-//    }
-//}
-//
-//func TestWUID_Renew_Panic(t *testing.T) {
-//    w := NewWUID("alpha", slog.NewScavenger())
-//    w.Renew = func() error {
-//        panic("foo")
-//    }
-//
-//    w.Reset((1 >> 36 << 36) | Bye)
-//    w.Next()
-//    waitUntilNumRenewAttemptsReaches(t, w, 1)
-//    w.Next()
-//
-//    w.Reset((2 >> 36 << 36) | Bye)
-//    w.Next()
-//    waitUntilNumRenewAttemptsReaches(t, w, 2)
-//
-//    for i := 0; i < 100; i++ {
-//        w.Next()
-//    }
-//    if atomic.LoadInt64(&w.Stats.NumRenewAttempts) != 2 {
-//        t.Fatal(`atomic.LoadInt64(&w.Stats.NumRenewAttempts) != 2`)
-//    }
-//    if atomic.LoadInt64(&w.Stats.NumRenewed) != 0 {
-//        t.Fatal(`atomic.LoadInt64(&w.Stats.NumRenewed) != 0`)
-//    }
-//
-//    var num int
-//    w.Scavenger().Filter(func(level, msg string) bool {
-//        if level == slog.LevelWarn && strings.Contains(msg, "renew failed") && strings.Contains(msg, "foo") {
-//            num++
-//        }
-//        return true
-//    })
-//    if num != 2 {
-//        t.Fatal(`num != 2`)
-//    }
-//}
-//
-//func TestWUID_Step(t *testing.T) {
-//    const step = 16
-//    w := NewWUID("alpha", slog.NewScavenger(), WithStep(step, 0))
-//    w.Reset(17 << 36)
-//
-//    w.Renew = func() error {
-//        w.Reset(((atomic.LoadInt64(&w.N) >> 36) + 1) << 36)
-//        return nil
-//    }
-//
-//    for i := int64(1); i < 100; i++ {
-//        if w.Next()&L36Mask != step*i {
-//            t.Fatal("w.Next()&L36Mask != step*i")
-//        }
-//    }
-//
-//    n1 := w.Next()
-//    w.Reset(((n1 >> 36 << 36) | Bye) & ^(step - 1))
-//    w.Next()
-//    waitUntilNumRenewedReaches(t, w, 1)
-//    n2 := w.Next()
-//
-//    w.Reset(((n2 >> 36 << 36) | Bye) & ^(step - 1))
-//    w.Next()
-//    waitUntilNumRenewedReaches(t, w, 2)
-//    n3 := w.Next()
-//
-//    if n2>>36-n1>>36 != 1 || n3>>36-n2>>36 != 1 {
-//        t.Fatalf("the renew mechanism does not work as expected: %x, %x, %x", n1>>36, n2>>36, n3>>36)
-//    }
-//
-//    var num int
-//    w.Scavenger().Filter(func(level, msg string) bool {
-//        if level == slog.LevelInfo && strings.Contains(msg, "renew succeeded") {
-//            num++
-//        }
-//        return true
-//    })
-//    if num != 2 {
-//        t.Fatal(`num != 2`)
-//    }
-//
-//    func() {
-//        defer func() {
-//            _ = recover()
-//        }()
-//        NewWUID("alpha", nil, WithStep(5, 0))
-//        t.Fatal("WithStep should have panicked")
-//    }()
-//}
-//
-//func TestWUID_Floor(t *testing.T) {
-//    r := rand.New(rand.NewSource(time.Now().Unix()))
-//    allSteps := []int64{1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024}
-//    for loop := 0; loop < 10000; loop++ {
-//        step := allSteps[r.Intn(len(allSteps))]
-//        var floor = r.Int63n(step)
-//        w := NewWUID("alpha", slog.NewScavenger(), WithStep(step, floor))
-//        if floor < 2 {
-//            if w.Flags != 0 {
-//                t.Fatal(`w.Flags != 0`)
-//            }
-//        } else {
-//            if w.Flags != 2 {
-//                t.Fatal(`w.Flags != 2`)
-//            }
-//        }
-//
-//        w.Reset(r.Int63n(100) << 36)
-//        baseValue := atomic.LoadInt64(&w.N)
-//
-//        for i := int64(1); i < 100; i++ {
-//            x := w.Next()
-//            if floor != 0 {
-//                if reminder := x % floor; reminder != 0 {
-//                    t.Fatal("reminder != 0")
-//                }
-//            }
-//            if x <= baseValue+i*step-step || x > baseValue+i*step {
-//                t.Fatal("x <= baseValue+i*step-step || x > baseValue+i*step")
-//            }
-//        }
-//    }
-//
-//    func() {
-//        defer func() {
-//            _ = recover()
-//        }()
-//        NewWUID("alpha", nil, WithStep(1024, 2000))
-//        t.Fatal("WithStep should have panicked")
-//    }()
-//
-//    func() {
-//        defer func() {
-//            _ = recover()
-//        }()
-//        NewWUID("alpha", nil, WithStep(1024, 0), WithStep(128, 0))
-//        t.Fatal("WithStep should have panicked")
-//    }()
-//}
-//
-//func TestWUID_VerifyH28(t *testing.T) {
-//    w1 := NewWUID("alpha", nil)
-//    w1.Reset(H28Mask)
-//    if err := w1.VerifyH28(100); err != nil {
-//        t.Fatalf("VerifyH28 does not work as expected. n: 100, error: %s", err)
-//    }
-//    if err := w1.VerifyH28(0); err == nil {
-//        t.Fatalf("VerifyH28 does not work as expected. n: 0")
-//    }
-//    if err := w1.VerifyH28(0x08000000); err == nil {
-//        t.Fatalf("VerifyH28 does not work as expected. n: 0x08000000")
-//    }
-//    if err := w1.VerifyH28(0x07FFFFFF); err == nil {
-//        t.Fatalf("VerifyH28 does not work as expected. n: 0x07FFFFFF")
-//    }
-//
-//    w2 := NewWUID("alpha", nil, WithSection(1))
-//    w2.Reset(H28Mask)
-//    if err := w2.VerifyH28(100); err != nil {
-//        t.Fatalf("VerifyH28 does not work as expected. section: 1, n: 100, error: %s", err)
-//    }
-//    if err := w2.VerifyH28(0); err == nil {
-//        t.Fatalf("VerifyH28 does not work as expected. section: 1, n: 0")
-//    }
-//    if err := w2.VerifyH28(0x01000000); err == nil {
-//        t.Fatalf("VerifyH28 does not work as expected. section: 1, n: 0x01000000")
-//    }
-//    if err := w2.VerifyH28(0x00FFFFFF); err == nil {
-//        t.Fatalf("VerifyH28 does not work as expected. section: 1, n: 0x00FFFFFF")
-//    }
-//}
-//
-//func TestWithSection_Panic(t *testing.T) {
-//    for i := -100; i <= 100; i++ {
-//        func(j int8) {
-//            defer func() {
-//                _ = recover()
-//            }()
-//            WithSection(j)
-//            if j >= 8 {
-//                t.Fatalf("WithSection should only accept the values in [0, 7]. j: %d", j)
-//            }
-//        }(int8(i))
-//    }
-//}
+
 //
 //func TestWithSection_Reset(t *testing.T) {
 //    for i := 0; i < 28; i++ {

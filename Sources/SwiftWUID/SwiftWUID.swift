@@ -19,7 +19,7 @@ public struct WUID {
     /// lowest 60-bit mask, used in reset()
     private static let l60Mask: Int64 = 0x0FFFFFFFFFFFFFFF
     
-    private static let sectionMask: Int64 = 0x3000000000000000
+    private static let sectionMask: Int64 = 7 << 60
     
     internal var n: Int64
     private var step: Int64
@@ -72,8 +72,16 @@ public struct WUID {
     private var loadH28: () throws -> Int64
     
     private mutating func renew() throws {
-        let existingH28 = n & Self.h28Mask
-        let h28 = try loadH28() & Self.h28Mask
+        let existingH28: Int64
+        let h28: Int64
+        if flags.contains(.withSection) {
+            existingH28 = n & Self.h28Mask & Self.l60Mask
+            h28 = try loadH28() & Self.h28Mask & Self.l60Mask
+        } else {
+            existingH28 = n & Self.h28Mask
+            h28 = try loadH28() & Self.h28Mask
+        }
+        
         guard h28 > 0 else {
             throw Errors.h28MustBePositiveAndNonZero
         }
@@ -82,7 +90,7 @@ public struct WUID {
         }
         
         if flags.contains(.withSection) {
-            n = (n & Self.sectionMask) | h28 & Self.l60Mask | step
+            n = (n & Self.sectionMask) | h28 | step
         } else {
             n = h28 | step
         }
@@ -215,21 +223,22 @@ public struct WUID {
             }
         }
 
-        switch flags {
-        case []:
-            return v1
-        case .withObfuscation:
+        if flags.contains(.withObfuscation) {
+            if flags.contains(.withReservedDecimalDigits) {
+                let x = v1 ^ obfuscationMask
+                let q = (v1 & Self.h28Mask) | (x & Self.l36Mask)
+                return q / scaledReservedDecimalDigits * scaledReservedDecimalDigits
+            }
+
             let x = v1 ^ obfuscationMask
             return (v1 & Self.h28Mask) | (x & Self.l36Mask)
-        case .withReservedDecimalDigits:
-            return v1 / scaledReservedDecimalDigits * scaledReservedDecimalDigits
-        case [.withReservedDecimalDigits, .withObfuscation]:
-            let x = v1 ^ obfuscationMask
-            let q = (v1 & Self.h28Mask) | (x & Self.l36Mask)
-            return q / scaledReservedDecimalDigits * scaledReservedDecimalDigits
-        default:
-            fatalError("Implementation incomplete")
         }
+
+        if flags.contains(.withReservedDecimalDigits) {
+            return v1 / scaledReservedDecimalDigits * scaledReservedDecimalDigits
+        }
+        
+        return v1
     }
     
     public mutating func reset(to providedN: Int64) throws {
