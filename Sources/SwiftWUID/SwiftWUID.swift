@@ -1,3 +1,8 @@
+// SwiftWUID
+//
+// Created by Dave Poirier on 2023-06-11
+// Copyright © 2023 Dave Poirier. Distributed under MIT License
+
 public struct WUID {
     
     /// panicValue indicates when Next starts to panic.
@@ -176,8 +181,8 @@ public struct WUID {
         case .v1(let seed):
             flags = flags.union(.withObfuscation)
             var x = seed
-            x = (x ^ (x >> 30)) * UInt64(0xbf58476d1ce4e5b9)
-            x = (x ^ (x >> 27)) * UInt64(0x94d049bb133111eb)
+            x = (x ^ (x >> 30)) &* UInt64(0xbf58476d1ce4e5b9)
+            x = (x ^ (x >> 27)) &* UInt64(0x94d049bb133111eb)
             x = (x ^ (x >> 31)) & UInt64(0x7FFFFFFFFFFFFFFF)
             if providedReservedDecimalDigits == .none {
                 let ones = UInt64(step - 1)

@@ -1,3 +1,8 @@
+// SwiftWUID
+//
+// Created by Dave Poirier on 2023-06-11
+// Copyright © 2023 Dave Poirier. Distributed under MIT License
+
 import XCTest
 @testable import SwiftWUID
 
@@ -32,55 +37,55 @@ final class SwiftWUIDTests: XCTestCase {
     }
     
     func testStep_by4_IdShouldIncreaseBy4() throws {
-        var w = try WUID(step: .by4, name: "by 2", h28: { 1 << 36 })
+        var w = try WUID(step: .by4, name: "by 4", h28: { 1 << 36 })
         XCTAssertEqual(w.next(), (1 << 36) + 4, "First ID should be 4")
         XCTAssertEqual(w.next(), (1 << 36) + 8, "Second ID should be 8")
     }
     
     func testStep_by8_IdShouldIncreaseBy8() throws {
-        var w = try WUID(step: .by8, name: "by 2", h28: { 1 << 36 })
+        var w = try WUID(step: .by8, name: "by 8", h28: { 1 << 36 })
         XCTAssertEqual(w.next(), (1 << 36) + 8, "First ID should be 8")
         XCTAssertEqual(w.next(), (1 << 36) + 16, "Second ID should be 16")
     }
     
     func testStep_by16_IdShouldIncreaseBy16() throws {
-        var w = try WUID(step: .by16, name: "by 2", h28: { 1 << 36 })
+        var w = try WUID(step: .by16, name: "by 16", h28: { 1 << 36 })
         XCTAssertEqual(w.next(), (1 << 36) + 16, "First ID should be 16")
         XCTAssertEqual(w.next(), (1 << 36) + 32, "Second ID should be 32")
     }
     
     func testStep_by32_IdShouldIncreaseBy32() throws {
-        var w = try WUID(step: .by32, name: "by 2", h28: { 1 << 36 })
+        var w = try WUID(step: .by32, name: "by 32", h28: { 1 << 36 })
         XCTAssertEqual(w.next(), (1 << 36) + 32, "First ID should be 32")
         XCTAssertEqual(w.next(), (1 << 36) + 64, "Second ID should be 64")
     }
     
     func testStep_by64_IdShouldIncreaseBy64() throws {
-        var w = try WUID(step: .by64, name: "by 2", h28: { 1 << 36 })
+        var w = try WUID(step: .by64, name: "by 64", h28: { 1 << 36 })
         XCTAssertEqual(w.next(), (1 << 36) + 64, "First ID should be 64")
         XCTAssertEqual(w.next(), (1 << 36) + 128, "Second ID should be 128")
     }
     
     func testStep_by128_IdShouldIncreaseBy128() throws {
-        var w = try WUID(step: .by128, name: "by 2", h28: { 1 << 36 })
+        var w = try WUID(step: .by128, name: "by 128", h28: { 1 << 36 })
         XCTAssertEqual(w.next(), (1 << 36) + 128, "First ID should be 128")
         XCTAssertEqual(w.next(), (1 << 36) + 256, "Second ID should be 256")
     }
     
     func testStep_by256_IdShouldIncreaseBy256() throws {
-        var w = try WUID(step: .by256, name: "by 2", h28: { 1 << 36 })
+        var w = try WUID(step: .by256, name: "by 256", h28: { 1 << 36 })
         XCTAssertEqual(w.next(), (1 << 36) + 256, "First ID should be 256")
         XCTAssertEqual(w.next(), (1 << 36) + 512, "Second ID should be 512")
     }
     
     func testStep_by512_IdShouldIncreaseBy512() throws {
-        var w = try WUID(step: .by512, name: "by 2", h28: { 1 << 36 })
+        var w = try WUID(step: .by512, name: "by 512", h28: { 1 << 36 })
         XCTAssertEqual(w.next(), (1 << 36) + 512, "First ID should be 512")
         XCTAssertEqual(w.next(), (1 << 36) + 1024, "Second ID should be 1024")
     }
     
     func testStep_by1024_IdShouldIncreaseBy1024() throws {
-        var w = try WUID(step: .by1024, name: "by 2", h28: { 1 << 36 })
+        var w = try WUID(step: .by1024, name: "by 1024", h28: { 1 << 36 })
         XCTAssertEqual(w.next(), (1 << 36) + 1024, "First ID should be 1024")
         XCTAssertEqual(w.next(), (1 << 36) + 2048, "Second ID should be 2048")
     }
@@ -89,7 +94,7 @@ final class SwiftWUIDTests: XCTestCase {
         var w = try WUID(
             step: .by16,
             reservedDecimalDigits: .one,
-            name: "by 2 with reserved digits",
+            name: "by 16 with reserved digits",
             h28: { 1 << 36 })
         XCTAssertEqual(w.next(), 68719476750, "With one reserved digit last decimal digit should be 0")
         XCTAssertEqual(w.next(), 68719476760, "With one reserved digit last decimal digit should be 0")
@@ -105,7 +110,7 @@ final class SwiftWUIDTests: XCTestCase {
         XCTAssertEqual(w.next(), 68719478000, "With three reserved digits last 3 decimal digits should be 000")
         XCTAssertEqual(w.next(), 68719479000, "With three reserved digits last 3 decimal digits should be 000")
     }
-
+    
     func testWUID_next() throws {
         for i in 0..<100 {
             var w = try WUID(name: "alpha", h28: { 1 << 36 })
@@ -176,7 +181,7 @@ final class SwiftWUIDTests: XCTestCase {
             name: "Invalid configuration",
             h28: { 1 << 36 }))
     }
-
+    
     func testSection_valueOutOfRange_shouldThrow() throws {
         XCTAssertThrowsError(try WUID(
             step: .by1024,
@@ -184,129 +189,58 @@ final class SwiftWUIDTests: XCTestCase {
             name: "Invalid configuration",
             h28: { 1 << 36 }))
     }
+    
+    func testObfuscation_withoutReservedDecimalDigits() throws {
+        // values based on
+        // wuid.NewWUID("Obfuscated", slog.NewScavenger(), wuid.WithObfuscation(0x1234567890ABCDEF))
+        var w = try WUID(
+            obfuscation: .v1(seed: 0x1234567890ABCDEF),
+            name: "Obfuscated",
+            h28: { 1 << 36 })
+        XCTAssertEqual(w.next(), 0x00000012e5aefe5d)
+        XCTAssertEqual(w.next(), 0x00000012e5aefe5e)
+    }
+    
+    func testObfuscation_withReservedDecimalDigits() throws {
+        // values based on
+        // wuid.NewWUID("Obfuscated", slog.NewScavenger(), wuid.WithStep(1024, 1000), wuid.WithObfuscation(0x1234567890ABCDEF))
+        var w = try WUID(
+            step: .by1024,
+            reservedDecimalDigits: .three,
+            obfuscation: .v1(seed: 0x1234567890ABCDEF),
+            name: "Obfuscated",
+            h28: { 1 << 36 })
+        XCTAssertEqual(w.next(), 81162861000)
+        XCTAssertEqual(w.next(), 81162860000)
+        XCTAssertEqual(w.next(), 81162859000)
+    }
+    
+    func testPerformanceUUID() {
+        measure {
+            for _ in 0...100_000 {
+                _ = UUID()
+            }
+        }
+    }
+    
+    func testPerformanceWUID() {
+        measure {
+            var w = try! WUID(name: "Performance", h28: { 1 << 36 })
+            for _ in 0...100_000 {
+                _ = w.next()
+            }
+        }
+    }
+    
+    func testPerformanceWUID_obfuscated() {
+        measure {
+            var w = try! WUID(
+                obfuscation: .v1(seed: .random(in: UInt64.min...UInt64.max)),
+                name: "Performance",
+                h28: { 1 << 36 })
+            for _ in 0...100_000 {
+                _ = w.next()
+            }
+        }
+    }
 }
-
-
-//
-//func TestWithSection_Reset(t *testing.T) {
-//    for i := 0; i < 28; i++ {
-//        n := int64(1) << (uint(i) + 36)
-//        func() {
-//            defer func() {
-//                if r := recover(); r != nil {
-//                    if i != 27 {
-//                        t.Fatal(r)
-//                    }
-//                }
-//            }()
-//            for j := int8(1); j < 8; j++ {
-//                w := NewWUID("alpha", nil, WithSection(j))
-//                w.Reset(n)
-//                v := atomic.LoadInt64(&w.N)
-//                if v>>60 != int64(j) {
-//                    t.Fatalf("w.Section does not work as expected. w.N: %x, n: %x, i: %d, j: %d", v, n, i, j)
-//                }
-//            }
-//        }()
-//    }
-//
-//    func() {
-//        defer func() {
-//            _ = recover()
-//        }()
-//        w := NewWUID("alpha", nil)
-//        w.Reset((1 << 36) | PanicValue)
-//        t.Fatal("Reset should have panicked")
-//    }()
-//}
-//
-//func TestWithH28Verifier(t *testing.T) {
-//    w := NewWUID("alpha", nil, WithH28Verifier(func(h28 int64) error {
-//        if h28 >= 20 {
-//            return errors.New("bomb")
-//        }
-//        return nil
-//    }))
-//    if err := w.VerifyH28(10); err != nil {
-//        t.Fatal("the H28Verifier should not return error")
-//    }
-//    if err := w.VerifyH28(20); err == nil || err.Error() != "bomb" {
-//        t.Fatal("the H28Verifier was not called")
-//    }
-//}
-//
-////gocyclo:ignore
-//func TestWithObfuscation(t *testing.T) {
-//    w1 := NewWUID("alpha", nil, WithObfuscation(1))
-//    if w1.Flags != 1 {
-//        t.Fatal(`w1.Flags != 1`)
-//    }
-//    if w1.ObfuscationMask == 0 {
-//        t.Fatal(`w1.ObfuscationMask == 0`)
-//    }
-//
-//    w1.Reset(1 << 36)
-//    for i := 1; i < 100; i++ {
-//        v := w1.Next()
-//        if v&H28Mask != 1<<36 {
-//            t.Fatal(`v&H28Mask != 1<<36`)
-//        }
-//        tmp := v ^ w1.ObfuscationMask
-//        if tmp&L36Mask != int64(i) {
-//            t.Fatal(`tmp&L36Mask != int64(i)`)
-//        }
-//    }
-//
-//    w2 := NewWUID("alpha", nil, WithObfuscation(1), WithStep(128, 100))
-//    if w2.Flags != 3 {
-//        t.Fatal(`w2.Flags != 3`)
-//    }
-//    if w2.ObfuscationMask == 0 {
-//        t.Fatal(`w2.ObfuscationMask == 0`)
-//    }
-//
-//    w2.Reset(1 << 36)
-//    for i := 1; i < 100; i++ {
-//        v := w2.Next()
-//        if v%w2.Floor != 0 {
-//            t.Fatal(`v%w2.Floor != 0`)
-//        }
-//        if v&H28Mask != 1<<36 {
-//            t.Fatal(`v&H28Mask != 1<<36`)
-//        }
-//        tmp := v ^ w2.ObfuscationMask
-//        if tmp&L36Mask&^(w2.Step-1) != w2.Step*int64(i) {
-//            t.Fatal(`tmp&L36Mask&^(w2.Step-1) != w2.Step*int64(i)`)
-//        }
-//    }
-//
-//    w3 := NewWUID("alpha", nil, WithObfuscation(1), WithStep(1024, 659))
-//    if w3.Flags != 3 {
-//        t.Fatal(`w3.Flags != 3`)
-//    }
-//    if w3.ObfuscationMask == 0 {
-//        t.Fatal(`w3.ObfuscationMask == 0`)
-//    }
-//
-//    w3.Reset(1<<36 + 1)
-//    for i := 1; i < 100; i++ {
-//        v := w3.Next()
-//        if v%w3.Floor != 0 {
-//            t.Fatal(`v%w3.Floor != 0`)
-//        }
-//        if v&H28Mask != 1<<36 {
-//            t.Fatal(`v&H28Mask != 1<<36`)
-//        }
-//        tmp := v ^ w3.ObfuscationMask
-//        if tmp&L36Mask&^(w3.Step-1) != w3.Step*int64(i+1) {
-//            t.Fatal(`tmp&L36Mask&^(w3.Step-1) != w3.Step*int64(i+1)`)
-//        }
-//    }
-//
-//    func() {
-//        defer func() {
-//            _ = recover()
-//        }()
-//        NewWUID("alpha", nil, WithObfuscation(0))
-//        t.Fatal("WithObfuscation should have panicked")
-//    }()
